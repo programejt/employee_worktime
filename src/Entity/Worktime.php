@@ -47,8 +47,7 @@ class Worktime
   public function setStartDate(\DateTimeInterface $startDate): static
   {
     $this->startDate = $startDate;
-    $this->startDay = clone $startDate;
-    $this->startDay = $this->startDay->modify('YYYY-mm-DD');
+    $this->startDay = (clone $startDate)->setTime(0, 0);
 
     return $this;
   }
