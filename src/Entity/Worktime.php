@@ -29,8 +29,8 @@ class Worktime
   private ?\DateTimeInterface $startDay = null;
 
   #[Assert\NotBlank]
-  #[ORM\ManyToOne(inversedBy: 'worktimes')]
-  #[ORM\JoinColumn(nullable: false)]
+  #[ORM\ManyToOne(targetEntity: Employee::class, inversedBy: 'worktimes')]
+  #[ORM\JoinColumn(nullable: true)]
   private ?Employee $employee = null;
 
   public function getId(): ?int

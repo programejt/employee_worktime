@@ -6,7 +6,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Worktime;
-use App\Entity\Employee;
 use App\Form\WorktimeType;
 use App\Repository\WorktimeRepository;
 use DateTime;
@@ -14,6 +13,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\Uid\Uuid;
 
 final class WorktimeController extends AbstractController
 {
@@ -77,18 +77,18 @@ final class WorktimeController extends AbstractController
 
     $cost = $parameterBag->get('cost');
 
-    if (preg_match('/^\d{4}-\d{2}$/', $date)) {
-      $employee = $entityManager->getRepository(Employee::class)->find($employeeUuid);
-
-      if (!$employee) {
+    if (\preg_match('/^\d{4}-\d{2}$/', $date)) {
+      try {
+        $employeeUuid = Uuid::fromString($employeeUuid);
+      } catch (\Exception $e) {
         return $this->json([
-          'response' => 'Nie znaleziono pracownika',
-        ], 404);
+          'response' => 'Niepoprawne id pracownika',
+        ], 422);
       }
 
-      $dateExplode = explode('-', $date);
+      $dateExplode = \explode('-', $date);
 
-      $worktimes = $worktimeRepository->findByMonth($dateExplode[0], $dateExplode[1], $employee);
+      $worktimes = $worktimeRepository->findByMonthAndEmployee($dateExplode[0], $dateExplode[1], $employeeUuid);
 
       if (!$worktimes) {
         return $this->json([
@@ -117,6 +117,7 @@ final class WorktimeController extends AbstractController
       return $this->json([
         'response' => [
           'ilosc normalnych godzin z danego miesiaca' => $monthlyHours,
+          'ilosc przepracowanych godzin z danego miesiaca' => $workedHours,
           'stawka' => $cost . ' PLN',
           'ilosc nadgodzin z danego miesiaca' => $afterHours,
           'stawka nadgodzinowa' => $afterHoursCostMultiply * $cost . ' PLN',

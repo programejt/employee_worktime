@@ -5,7 +5,7 @@ namespace App\Repository;
 use App\Entity\Worktime;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
-use App\Entity\Employee;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * @extends ServiceEntityRepository<Worktime>
@@ -17,10 +17,10 @@ class WorktimeRepository extends ServiceEntityRepository
     parent::__construct($registry, Worktime::class);
   }
 
-  public function findByMonth(
+  public function findByMonthAndEmployee(
     int $year,
     int $month,
-    Employee $employee,
+    Uuid $employeeId,
   ) {
     $startDate = new \DateTime("$year-$month-01");
     $endDate = clone $startDate;
@@ -31,9 +31,9 @@ class WorktimeRepository extends ServiceEntityRepository
       ->where('wt.startDay >= :startDate')
       ->andWhere('wt.startDay <= :endDate')
       ->andWhere('wt.employee = :employee')
-      ->setParameter('startDate', $startDate->format('Y-m-d'))
-      ->setParameter('endDate', $endDate->format('Y-m-d'))
-      ->setParameter('employee', $employee)
+      ->setParameter('startDate', $startDate)
+      ->setParameter('endDate', $endDate)
+      ->setParameter('employee', $employeeId->toBinary())
       ->getQuery()
       ->getResult();
   }
