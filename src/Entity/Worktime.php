@@ -5,7 +5,9 @@ namespace App\Entity;
 use App\Repository\WorktimeRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
+#[UniqueEntity(fields: ['employee', 'startDay'], message: 'Employee can\'t have more than 1 time in the same day')]
 #[ORM\Entity(repositoryClass: WorktimeRepository::class)]
 class Worktime
 {
