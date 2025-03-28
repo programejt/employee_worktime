@@ -59,12 +59,11 @@ final class WorktimeController extends AbstractController
     ], 422);
   }
 
-  #[Route('/worktime/summary', name: 'app_worktime_summary', methods: ['GET'])]
-  public function summary(
+  #[Route('/worktime/summary/day', name: 'app_worktime_summary_day', methods: ['GET'])]
+  public function summaryDay(
     Request $request,
     ParameterBagInterface $parameterBag,
     WorktimeRepository $worktimeRepository,
-    EntityManagerInterface $entityManager,
   ): JsonResponse {
     $employeeUuid = $request->query->get('employee');
     $date = $request->query->get('date');
@@ -75,61 +74,24 @@ final class WorktimeController extends AbstractController
       ], 400);
     }
 
-    $cost = $parameterBag->get('cost');
-
-    if (\preg_match('/^\d{4}-\d{2}$/', $date)) {
-      try {
-        $employeeUuid = Uuid::fromString($employeeUuid);
-      } catch (\Exception $e) {
-        return $this->json([
-          'response' => 'Niepoprawne id pracownika',
-        ], 422);
-      }
-
-      $dateExplode = \explode('-', $date);
-
-      $worktimes = $worktimeRepository->findByMonthAndEmployee($dateExplode[0], $dateExplode[1], $employeeUuid);
-
-      if (!$worktimes) {
-        return $this->json([
-          'response' => 'Nie znaleziono czasu pracy dla podanych parametrów',
-        ], 404);
-      }
-
-      $monthlyHours = $parameterBag->get('monthly_hours');
-      $afterHoursCostMultiply = $parameterBag->get('after_hours_cost_multiply');
-
-      $workedHours = 0;
-
-      foreach ($worktimes as $worktime) {
-        $workedHours += $worktime->getWorkedHours();
-      }
-
-      $afterHours = $workedHours - $monthlyHours;
-
-      if ($afterHours > 0) {
-        $toPay = ($monthlyHours * $cost) + ($afterHours * $cost * $afterHoursCostMultiply);
-      } else {
-        $toPay = $workedHours * $cost;
-        $afterHours = 0;
-      }
-
+    if (!\preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
       return $this->json([
-        'response' => [
-          'ilosc normalnych godzin z danego miesiaca' => $monthlyHours,
-          'ilosc przepracowanych godzin z danego miesiaca' => $workedHours,
-          'stawka' => $cost . ' PLN',
-          'ilosc nadgodzin z danego miesiaca' => $afterHours,
-          'stawka nadgodzinowa' => $afterHoursCostMultiply * $cost . ' PLN',
-          'suma po przeliczeniu' => $toPay . 'PLN',
-        ],
-      ]);
+        'response' => 'Nieprawidłowa data',
+      ], 422);
+    }
+
+    try {
+      $employeeUuid = Uuid::fromString($employeeUuid);
+    } catch (\Exception $e) {
+      return $this->json([
+        'response' => 'Niepoprawne id pracownika',
+      ], 422);
     }
 
     $date = new \DateTime($date);
 
     $worktime = $worktimeRepository->findOneBy([
-      'employee' => $employeeUuid,
+      'employee' => $employeeUuid->toBinary(),
       'startDay' => $date,
     ]);
 
@@ -139,6 +101,7 @@ final class WorktimeController extends AbstractController
       ], 404);
     }
 
+    $cost = $parameterBag->get('cost');
     $workedHours = $worktime->getWorkedHours();
 
     return $this->json([
@@ -146,6 +109,76 @@ final class WorktimeController extends AbstractController
         'suma po przeliczeniu' => $workedHours * $cost . ' PLN',
         'ilosc godzin z danego dnia' => $workedHours,
         'stawka' => $cost . ' PLN',
+      ],
+    ]);
+  }
+
+  #[Route('/worktime/summary/month', name: 'app_worktime_summary_month', methods: ['GET'])]
+  public function summaryByMonth(
+    Request $request,
+    ParameterBagInterface $parameterBag,
+    WorktimeRepository $worktimeRepository,
+  ): JsonResponse {
+    $employeeUuid = $request->query->get('employee');
+    $date = $request->query->get('date');
+
+    if (!($employeeUuid && $date)) {
+      return $this->json([
+        'response' => 'Nie podano id pracownika i/lub daty',
+      ], 400);
+    }
+
+    if (!\preg_match('/^\d{4}-\d{2}$/', $date)) {
+      return $this->json([
+        'response' => 'Nieprawidłowa data',
+      ], 422);
+    }
+
+    try {
+      $employeeUuid = Uuid::fromString($employeeUuid);
+    } catch (\Exception $e) {
+      return $this->json([
+        'response' => 'Niepoprawne id pracownika',
+      ], 422);
+    }
+
+    $dateExplode = \explode('-', $date);
+
+    $worktimes = $worktimeRepository->findByMonthAndEmployee($dateExplode[0], $dateExplode[1], $employeeUuid);
+
+    if (!$worktimes) {
+      return $this->json([
+        'response' => 'Nie znaleziono czasu pracy dla podanych parametrów',
+      ], 404);
+    }
+
+    $cost = $parameterBag->get('cost');
+    $monthlyHours = $parameterBag->get('monthly_hours');
+    $afterHoursCostMultiply = $parameterBag->get('after_hours_cost_multiply');
+
+    $workedHours = 0;
+
+    foreach ($worktimes as $worktime) {
+      $workedHours += $worktime->getWorkedHours();
+    }
+
+    $afterHours = $workedHours - $monthlyHours;
+
+    if ($afterHours > 0) {
+      $toPay = ($monthlyHours * $cost) + ($afterHours * $cost * $afterHoursCostMultiply);
+    } else {
+      $toPay = $workedHours * $cost;
+      $afterHours = 0;
+    }
+
+    return $this->json([
+      'response' => [
+        'ilosc normalnych godzin z danego miesiaca' => $monthlyHours,
+        'ilosc przepracowanych godzin z danego miesiaca' => $workedHours,
+        'stawka' => $cost . ' PLN',
+        'ilosc nadgodzin z danego miesiaca' => $afterHours,
+        'stawka nadgodzinowa' => $afterHoursCostMultiply * $cost . ' PLN',
+        'suma po przeliczeniu' => $toPay . 'PLN',
       ],
     ]);
   }
