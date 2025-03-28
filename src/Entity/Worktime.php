@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Repository\WorktimeRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 #[UniqueEntity(fields: ['employee', 'startDay'], message: 'Employee can\'t have more than 1 time in the same day')]
@@ -16,15 +17,18 @@ class Worktime
   #[ORM\Column]
   private ?int $id = null;
 
+  #[Assert\NotBlank]
   #[ORM\Column(type: Types::DATETIME_MUTABLE)]
   private ?\DateTimeInterface $startDate = null;
 
+  #[Assert\NotBlank]
   #[ORM\Column(type: Types::DATETIME_MUTABLE)]
   private ?\DateTimeInterface $endDate = null;
 
   #[ORM\Column(type: Types::DATE_MUTABLE)]
   private ?\DateTimeInterface $startDay = null;
 
+  #[Assert\NotBlank]
   #[ORM\ManyToOne(inversedBy: 'worktimes')]
   #[ORM\JoinColumn(nullable: false)]
   private ?Employee $employee = null;

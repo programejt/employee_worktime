@@ -8,6 +8,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Worktime;
 use App\Form\WorktimeType;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 
 final class WorktimeController extends AbstractController
@@ -23,21 +24,25 @@ final class WorktimeController extends AbstractController
     $form->handleRequest($request);
 
     if ($form->isSubmitted() && $form->isValid()) {
-      try {
-        $entityManager->persist($worktime);
-        $entityManager->flush();
-      } catch (\Exception $e) {
+      if (abs($worktime->getEndDate()->getTimestamp() - $worktime->getStartDate()->getTimestamp()) / 3600 <= 12) {
+        try {
+          $entityManager->persist($worktime);
+          $entityManager->flush();
+        } catch (\Exception $e) {
+          return $this->json([
+            'response' => 'Nie udało się dodać czasu pracy',
+          ], 500);
+        }
+
         return $this->json([
-          'response' => 'Nie udało się dodać czasu pracy',
-        ], 500);
+          'response' => 'Pomyślnie dodano czas pracy',
+        ]);
       }
 
-      return $this->json([
-        'response' => 'Pomyślnie dodano czas pracy',
-      ]);
+      $form->addError(new FormError('Przedział czasowy nie może trwać dłużej niż 12 godzin'));
     }
 
-    $errors = $form->getErrors(true, false);
+    $errors = $form->getErrors(true, true);
     $errorsMessages = [];
 
     foreach ($errors as $error) {
