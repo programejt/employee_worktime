@@ -6,6 +6,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\Worktime;
+use App\Entity\Employee;
 use App\Form\WorktimeType;
 use App\Repository\WorktimeRepository;
 use DateTime;
@@ -63,6 +64,7 @@ final class WorktimeController extends AbstractController
     Request $request,
     ParameterBagInterface $parameterBag,
     WorktimeRepository $worktimeRepository,
+    EntityManagerInterface $entityManager,
   ): JsonResponse {
     $employeeUuid = $request->query->get('employee');
     $date = $request->query->get('date');
@@ -71,6 +73,31 @@ final class WorktimeController extends AbstractController
       return $this->json([
         'response' => 'Nie podano id pracownika i/lub daty',
       ], 400);
+    }
+
+    $cost = $parameterBag->get('cost');
+
+    if (preg_match('/^\d{4}-\d{2}$/', $date)) {
+      $dateExplode = explode('-', $date);
+
+      $employee = $entityManager->getRepository(Employee::class)->find($employeeUuid);
+
+      $worktime = $worktimeRepository->findByMonth($dateExplode[0], $dateExplode[1], $employee);
+
+      $monthlyHours = $parameterBag->get('monthly_hours');
+      $afterHoursCostMultiply = $parameterBag->get('after_hours_cost_multiply');
+
+      return $this->json([
+        'response' => [
+          'ilosc normalnych godzin z danego miesiaca' => $monthlyHours,
+          'stawka' => $cost . ' PLN',
+          'ilość nadgodzin z danego miesiaca' => 0,
+          'suma po przeliczeniu' => 0 . ' PLN',
+          'ilosc godzin z danego dnia' => 0,
+          'stawka nadgodzinowa' => $afterHoursCostMultiply * $cost.'PLN',
+          'suma po przeliczeniu' => 0 . 'PLN',
+        ],
+      ]);
     }
 
     $date = new \DateTime($date);
@@ -86,17 +113,13 @@ final class WorktimeController extends AbstractController
       ], 404);
     }
 
-    $monthlyHours = $parameterBag->get('monthly_hours');
-    $cost = $parameterBag->get('cost');
-    $afterHoursCostMultiply = $parameterBag->get('after_hours_cost_multiply');
-
     $workedHours = $worktime[0]->getWorkedHours();
 
     return $this->json([
       'response' => [
-        'suma po przeliczeniu' => $workedHours * $cost.' PLN',
+        'suma po przeliczeniu' => $workedHours * $cost . ' PLN',
         'ilosc godzin z danego dnia' => $workedHours,
-        'stawka' => $cost.' PLN',
+        'stawka' => $cost . ' PLN',
       ],
     ]);
   }

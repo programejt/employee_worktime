@@ -23,7 +23,7 @@ class WorktimeType extends AbstractType
     $builder
       ->add('employee', EntityType::class, [
         'class' => Employee::class,
-        'invalid_message' => 'Selected employee is invalid',
+        'invalid_message' => 'Niepoprawny pracownik',
       ])
       ->add('startDate', DateTimeType::class, $dateOptions)
       ->add('endDate', DateTimeType::class, $dateOptions)

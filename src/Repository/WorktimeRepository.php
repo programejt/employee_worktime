@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\Worktime;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use App\Entity\Employee;
 
 /**
  * @extends ServiceEntityRepository<Worktime>
@@ -16,13 +17,19 @@ class WorktimeRepository extends ServiceEntityRepository
     parent::__construct($registry, Worktime::class);
   }
 
-  public function findByMonth(int $year, int $month)
+  public function findByMonth(int $year, int $month, Employee $employee)
   {
+    $startDate = new \DateTime("$year-$month-01");
+    $endDate = clone $startDate;
+    $endDate->modify('last day of this month');
+
     return $this->createQueryBuilder('wt')
-      ->where('YEAR(wt.startDay) = :year')
-      ->andWhere('MONTH(wt.startDay) = :month')
-      ->setParameter('year', $year)
-      ->setParameter('month', $month)
+      ->where('wt.startDay >= :startDate')
+      ->andWhere('wt.startDay <= :endDate')
+      ->andWhere('wt.employee = :employee')
+      ->setParameter('startDate', $startDate)
+      ->setParameter('endDate', $endDate)
+      ->setParameter('employee', $employee)
       ->getQuery()
       ->getResult();
   }

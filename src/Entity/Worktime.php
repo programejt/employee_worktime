@@ -8,7 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
-#[UniqueEntity(fields: ['employee', 'startDay'], message: 'Employee can\'t have more than 1 time in the same day')]
+#[UniqueEntity(fields: ['employee', 'startDay'], message: 'Pracownik nie może mieć więcej niż jednego czasu pracy w danym dniu')]
 #[ORM\Entity(repositoryClass: WorktimeRepository::class)]
 class Worktime
 {
