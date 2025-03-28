@@ -86,4 +86,13 @@ class Worktime
 
     return $this;
   }
+
+  public function getWorkedHours(): float
+  {
+    if ($this->getStartDate() && $this->getEndDate()) {
+      return round((abs($this->getEndDate()->getTimestamp() - $this->getStartDate()->getTimestamp()) / 3600 * 2)) / 2;
+    }
+
+    return 0;
+  }
 }
