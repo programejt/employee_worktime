@@ -82,20 +82,45 @@ final class WorktimeController extends AbstractController
 
       $employee = $entityManager->getRepository(Employee::class)->find($employeeUuid);
 
-      $worktime = $worktimeRepository->findByMonth($dateExplode[0], $dateExplode[1], $employee);
+      if (!$employee) {
+        return $this->json([
+          'response' => 'Nie znaleziono pracownika',
+        ], 404);
+      }
+
+      $worktimes = $worktimeRepository->findByMonth($dateExplode[0], $dateExplode[1], $employee);
+
+      if (!$worktimes) {
+        return $this->json([
+          'response' => 'Nie znaleziono czasu pracy dla podanych parametrów',
+        ], 404);
+      }
 
       $monthlyHours = $parameterBag->get('monthly_hours');
       $afterHoursCostMultiply = $parameterBag->get('after_hours_cost_multiply');
+
+      $workedHours = 0;
+
+      foreach ($worktimes as $worktime) {
+        $workedHours += $worktime->getWorkedHours();
+      }
+
+      $afterHours = $workedHours - $monthlyHours;
+
+      if ($afterHours > 0) {
+        $toPay = $monthlyHours * $cost + $afterHours * $cost * $afterHoursCostMultiply;
+      } else {
+        $toPay = $workedHours * $cost;
+        $afterHours = 0;
+      }
 
       return $this->json([
         'response' => [
           'ilosc normalnych godzin z danego miesiaca' => $monthlyHours,
           'stawka' => $cost . ' PLN',
-          'ilość nadgodzin z danego miesiaca' => 0,
-          'suma po przeliczeniu' => 0 . ' PLN',
-          'ilosc godzin z danego dnia' => 0,
+          'ilosc nadgodzin z danego miesiaca' => $afterHours,
           'stawka nadgodzinowa' => $afterHoursCostMultiply * $cost.'PLN',
-          'suma po przeliczeniu' => 0 . 'PLN',
+          'suma po przeliczeniu' => $toPay . 'PLN',
         ],
       ]);
     }

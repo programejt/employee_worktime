@@ -17,18 +17,22 @@ class WorktimeRepository extends ServiceEntityRepository
     parent::__construct($registry, Worktime::class);
   }
 
-  public function findByMonth(int $year, int $month, Employee $employee)
-  {
+  public function findByMonth(
+    int $year,
+    int $month,
+    Employee $employee,
+  ) {
     $startDate = new \DateTime("$year-$month-01");
     $endDate = clone $startDate;
     $endDate->modify('last day of this month');
+    $endDate->setTime(23, 59, 59);
 
     return $this->createQueryBuilder('wt')
       ->where('wt.startDay >= :startDate')
       ->andWhere('wt.startDay <= :endDate')
       ->andWhere('wt.employee = :employee')
-      ->setParameter('startDate', $startDate)
-      ->setParameter('endDate', $endDate)
+      ->setParameter('startDate', $startDate->format('Y-m-d'))
+      ->setParameter('endDate', $endDate->format('Y-m-d'))
       ->setParameter('employee', $employee)
       ->getQuery()
       ->getResult();
