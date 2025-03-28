@@ -78,8 +78,6 @@ final class WorktimeController extends AbstractController
     $cost = $parameterBag->get('cost');
 
     if (preg_match('/^\d{4}-\d{2}$/', $date)) {
-      $dateExplode = explode('-', $date);
-
       $employee = $entityManager->getRepository(Employee::class)->find($employeeUuid);
 
       if (!$employee) {
@@ -87,6 +85,8 @@ final class WorktimeController extends AbstractController
           'response' => 'Nie znaleziono pracownika',
         ], 404);
       }
+
+      $dateExplode = explode('-', $date);
 
       $worktimes = $worktimeRepository->findByMonth($dateExplode[0], $dateExplode[1], $employee);
 
@@ -108,7 +108,7 @@ final class WorktimeController extends AbstractController
       $afterHours = $workedHours - $monthlyHours;
 
       if ($afterHours > 0) {
-        $toPay = $monthlyHours * $cost + $afterHours * $cost * $afterHoursCostMultiply;
+        $toPay = ($monthlyHours * $cost) + ($afterHours * $cost * $afterHoursCostMultiply);
       } else {
         $toPay = $workedHours * $cost;
         $afterHours = 0;
@@ -119,7 +119,7 @@ final class WorktimeController extends AbstractController
           'ilosc normalnych godzin z danego miesiaca' => $monthlyHours,
           'stawka' => $cost . ' PLN',
           'ilosc nadgodzin z danego miesiaca' => $afterHours,
-          'stawka nadgodzinowa' => $afterHoursCostMultiply * $cost.'PLN',
+          'stawka nadgodzinowa' => $afterHoursCostMultiply * $cost . ' PLN',
           'suma po przeliczeniu' => $toPay . 'PLN',
         ],
       ]);
@@ -127,18 +127,18 @@ final class WorktimeController extends AbstractController
 
     $date = new \DateTime($date);
 
-    $worktime = $worktimeRepository->findBy([
+    $worktime = $worktimeRepository->findOneBy([
       'employee' => $employeeUuid,
       'startDay' => $date,
     ]);
 
-    if (!count($worktime)) {
+    if (!$worktime) {
       return $this->json([
         'response' => 'Nie znaleziono przedziału czasowego dla podanych parametrów',
       ], 404);
     }
 
-    $workedHours = $worktime[0]->getWorkedHours();
+    $workedHours = $worktime->getWorkedHours();
 
     return $this->json([
       'response' => [
