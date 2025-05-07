@@ -12,8 +12,8 @@ use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Uid\Uuid;
+use App\Service\WorktimeService;
 
 final class WorktimeController extends AbstractController
 {
@@ -62,11 +62,11 @@ final class WorktimeController extends AbstractController
   #[Route('/worktime/summary/day', name: 'app_worktime_summary_day', methods: ['GET'])]
   public function summaryDay(
     Request $request,
-    ParameterBagInterface $parameterBag,
     WorktimeRepository $worktimeRepository,
+    WorktimeService $worktimeService,
   ): JsonResponse {
     $employeeUuid = $request->query->get('employee');
-    $date = $request->query->get('date');
+    $date         = $request->query->get('date');
 
     if (!($employeeUuid && $date)) {
       return $this->json([
@@ -101,14 +101,13 @@ final class WorktimeController extends AbstractController
       ], 404);
     }
 
-    $cost = $parameterBag->get('cost');
-    $workedHours = $worktime->getWorkedHours();
+    $summary = $worktimeService->getSummaryByDay($worktime);
 
     return $this->json([
       'response' => [
-        'suma po przeliczeniu' => $workedHours * $cost . ' PLN',
-        'ilosc godzin z danego dnia' => $workedHours,
-        'stawka' => $cost . ' PLN',
+        'suma po przeliczeniu' => $summary->toPay . ' PLN',
+        'ilość godzin z danego dnia' => $summary->workedHours,
+        'stawka' => $summary->cost . ' PLN',
       ],
     ]);
   }
@@ -116,11 +115,11 @@ final class WorktimeController extends AbstractController
   #[Route('/worktime/summary/month', name: 'app_worktime_summary_month', methods: ['GET'])]
   public function summaryByMonth(
     Request $request,
-    ParameterBagInterface $parameterBag,
     WorktimeRepository $worktimeRepository,
+    WorktimeService $worktimeService,
   ): JsonResponse {
     $employeeUuid = $request->query->get('employee');
-    $date = $request->query->get('date');
+    $date         = $request->query->get('date');
 
     if (!($employeeUuid && $date)) {
       return $this->json([
@@ -152,33 +151,16 @@ final class WorktimeController extends AbstractController
       ], 404);
     }
 
-    $cost = $parameterBag->get('cost');
-    $monthlyHours = $parameterBag->get('monthly_hours');
-    $afterHoursCostMultiply = $parameterBag->get('after_hours_cost_multiply');
-
-    $workedHours = 0;
-
-    foreach ($worktimes as $worktime) {
-      $workedHours += $worktime->getWorkedHours();
-    }
-
-    $afterHours = $workedHours - $monthlyHours;
-
-    if ($afterHours > 0) {
-      $toPay = ($monthlyHours * $cost) + ($afterHours * $cost * $afterHoursCostMultiply);
-    } else {
-      $toPay = $workedHours * $cost;
-      $afterHours = 0;
-    }
+    $summary = $worktimeService->getSummaryByMonth($worktimes);
 
     return $this->json([
       'response' => [
-        'ilosc normalnych godzin z danego miesiaca' => $monthlyHours,
-        'ilosc przepracowanych godzin z danego miesiaca' => $workedHours,
-        'stawka' => $cost . ' PLN',
-        'ilosc nadgodzin z danego miesiaca' => $afterHours,
-        'stawka nadgodzinowa' => $afterHoursCostMultiply * $cost . ' PLN',
-        'suma po przeliczeniu' => $toPay . 'PLN',
+        'ilość normalnych godzin z danego miesiąca' => $summary->monthlyHours,
+        'ilość przepracowanych godzin z danego miesiąca' => $summary->workedHours,
+        'stawka' => $summary->cost . ' PLN',
+        'ilość nadgodzin z danego miesiąca' => $summary->afterHours,
+        'stawka nadgodzinowa' => $summary->afterHoursCost . ' PLN',
+        'suma po przeliczeniu' => $summary->toPay . ' PLN',
       ],
     ]);
   }
